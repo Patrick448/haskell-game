@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Utilities
   other-modules:
       Paths_haskell_game
   autogen-modules:
