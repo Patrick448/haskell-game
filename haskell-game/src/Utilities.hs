@@ -1,22 +1,21 @@
-module Utilities (initMenu, levelMenu, numberOfDiceMenu, startMenu, easyLevel, difficultLevel, randomNum,generateFaces, readInt, printDice, printDie) where
+module Utilities (initMenu, levelMenu, numberOfDiceMenu, generateFaces, printDice, startMenu, easyLevel, difficultLevel) where
 
 import Text.Read (readMaybe)
 import Control.Monad (replicateM)
 import System.Random
 
--- Menus 
 initMenu :: IO ()
 initMenu = do
-    putStrLn "+-----------------------------------+"
-    putStrLn "  _______________________________"
-    putStrLn " |                               |"
-    putStrLn " |  Bem-vindo ao jogo dos dados  |"
-    putStrLn " |_______________________________|"
+    putStrLn "+---------------------------------------------------------------------+"
+    putStrLn "                   _______________________________"
+    putStrLn "                  |                               |"
+    putStrLn "                  |  Bem-vindo ao jogo dos dados  |"
+    putStrLn "                  |_______________________________|"
     putStrLn ""
-    putStrLn "+-----------------------------------+\n"
+    putStrLn "+---------------------------------------------------------------------+\n"
 
 levelMenu :: IO Int
-levelMenu = do
+levelMenu = do             
     putStrLn "+---------------------------------------------------------------------+"
     putStrLn "Para iniciarmos o jogo, você precisa definir qual NÍVEL deseja jogar."
     putStrLn "Para o nível FÁCIL, digite o número 1."
@@ -71,18 +70,109 @@ startMenu (GameState dice) = do
             putStrLn "+------------- Você escolheu um valor inválido para os dados. -------------+"
             startMenu (GameState dice)
 
-easyLevel :: GameState -> IO ()
-easyLevel (GameState dice) = do
-    putStrLn "coisas do nível fácil"
+isOver :: GameState -> Bool
+isOver (GameState dice)
+    | length dice == 0 = True
+    | otherwise        = False
+
+easyLevel :: GameState -> Int -> IO ()
+easyLevel (GameState dice) turn = do
+    let currentTurn = turn + 1
+    if currentTurn == 3 
+        then do return ()
+    else do 
+        putStrLn "\n"
+        printDice (GameState dice)
+        let num = length dice
+        let playerTurn = isOdd currentTurn
+        if playerTurn 
+        then do
+            humanPlayerTurn (GameState dice) currentTurn
+        else do
+            putStrLn "\nÉ a minha vez de jogar!"
+    
+humanPlayerTurn :: GameState -> Int -> IO ()
+humanPlayerTurn (GameState dice) turn = do
+    let num = length dice
+    putStrLn $ "É a sua vez de jogar! Escolha um dado de 1 até " ++ show num ++ " para mexer."
+    choosenDie <- readInt
+    case choosenDie of
+        Just val -> 
+            if val >= 1 && val <= num
+            then do
+                putStrLn "+------------------------ Você escolheu esse dado: ------------------------+"
+                printDie (dice !! (val - 1))
+                chooseMove (GameState dice) val turn
+            else do
+                putStrLn "+-------------------- Você escolheu um valor inválido. ---------------------+" 
+                humanPlayerTurn (GameState dice) turn 
+        Nothing -> do
+            putStrLn "+-------------------- Você escolheu um valor inválido. ---------------------+" 
+            humanPlayerTurn (GameState dice) turn   
+
+chooseMove :: GameState -> Int -> Int -> IO ()
+chooseMove (GameState dice) chosenDie turn = do
+    let dieValue = getValueAtIndex (GameState dice) chosenDie
+    case dieValue of
+        Just value ->
+            if value == 1
+            then do
+                putStrLn "A única opção para esse dado é ser removido do jogo.\nDado removido."
+                putStrLn "+--------------------------------------------------------------------------+"
+                easyLevel (GameState dice) turn 
+            else if value == 2
+                then do
+                    putStrLn "A única opção para esse dado é ser virado para a face 1.\nDado modificado."
+                    putStrLn "+--------------------------------------------------------------------------+"
+                    easyLevel (GameState dice) turn
+                    else if value == 3
+                        then do 
+                            putStrLn "Você tem duas opções para esse dado."
+                            putStrLn "Digite o número correspondente a opção que deseja realizar."
+                            putStrLn "1. Virar o dado para a face 1."
+                            putStrLn "2. Virar o dado para a face 2."
+                            option <- readInt
+                            easyLevel (GameState dice) turn
+                        else if value == 4
+                            then do 
+                                putStrLn "Você tem duas opções para esse dado."
+                                putStrLn "Digite o número correspondente a opção que deseja realizar."
+                                putStrLn "1. Virar o dado para a face 1."
+                                putStrLn "2. Virar o dado para a face 2."
+                                option <- readInt
+                                easyLevel (GameState dice) turn
+                            else if value == 5
+                                then do 
+                                    putStrLn "Você tem três opções para esse dado."
+                                    putStrLn "Digite o número correspondente a opção que deseja realizar."
+                                    putStrLn "1. Virar o dado para a face 1."
+                                    putStrLn "2. Virar o dado para a face 3."
+                                    putStrLn "3. Virar o dado para a face 4."
+                                    option <- readInt
+                                    easyLevel (GameState dice) turn
+                                else if value == 6 
+                                    then do 
+                                        putStrLn "Você tem quatro opções para esse dado."
+                                        putStrLn "Digite o número correspondente a opção que deseja realizar."
+                                        putStrLn "1. Virar o dado para a face 2."
+                                        putStrLn "2. Virar o dado para a face 3."
+                                        putStrLn "3. Virar o dado para a face 4."
+                                        putStrLn "4. Virar o dado para a face 5."
+                                        option <- readInt  
+                                        easyLevel (GameState dice) turn                                 
+                                    else return ()
+        Nothing -> putStrLn "Valor inválido."
+
+getValueAtIndex :: GameState -> Int -> Maybe Int
+getValueAtIndex (GameState dice) n
+    | n >= 0 && n < length dice = Just (dice !! (n-1))
+    | otherwise = Nothing
 
 difficultLevel :: GameState -> IO ()
 difficultLevel (GameState dice) = do
-    putStrLn "No nível difícil eu começo a jogada!"
-    choosenDie <- randomNum (length dice)
-    putStrLn $ "Escolhi mexer no dado " ++ show choosenDie
-    printDie (dice !! (choosenDie - 1))
+    let num = length dice
+    putStrLn $ "coisa do difícil" ++ show num ++ "!"
 
--- Funçãoes auxiliares 
 randomNum :: Int -> IO Int
 randomNum n = do
     gen <- getStdGen
@@ -104,6 +194,7 @@ printDice :: GameState -> IO ()
 printDice (GameState dice) = do
     putStrLn "+------------------- Faces voltadas para cima na mesa ---------------------+"
     mapM_ printDiceLine (chunksOf 6 dice)
+    putStrLn "+--------------------------------------------------------------------------+"
 
 printDiceLine :: [Int] -> IO ()
 printDiceLine dice = do
@@ -121,6 +212,7 @@ printDie dieNum = do
     putStrLn $ "   | " ++ show dieNum ++ " |    "
     putStrLn $ "   +---+    "
 
+isOdd :: Int -> Bool
+isOdd n = n `mod` 2 /= 0
 
--- Tipos de dados gerados
 data GameState = GameState [Int] deriving Show
