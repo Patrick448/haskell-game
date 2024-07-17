@@ -78,7 +78,6 @@ isOver (GameState dice)
 easyLevel :: IO GameState -> Int -> IO ()
 easyLevel ioGameState turn = do
     gameState <- ioGameState 
-    let (GameState dice) = gameState
     let currentTurn = turn + 1
     let gameIsOver = isOver gameState
     if gameIsOver
@@ -86,7 +85,6 @@ easyLevel ioGameState turn = do
     else do 
         putStrLn "\n"
         printDice gameState
-        let num = length dice
         let playerTurn = isOdd currentTurn
         if playerTurn 
         then do
@@ -122,70 +120,131 @@ chooseMove ioGameState chosenDiePosition = do
     gameState <- ioGameState 
     let (GameState dice) = gameState
     let dieValue = getValueAtIndex (GameState dice) chosenDiePosition
-    case dieValue of
+    option <- case dieValue of
         Just value ->
             if value == 1
-            then do
-                putStrLn "A única opção para esse dado é ser removido do jogo."
-                putStrLn "+--------------------------------------------------------------------------+"
-                newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) (Just 0) 
-                return newGameState
+            then 
+                return chooseMove1
             else if value == 2
-                then do
-                    putStrLn "A única opção para esse dado é ser virado para a face 1."
-                    putStrLn "+--------------------------------------------------------------------------+"
-                    newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) (Just 1)
-                    return newGameState 
+                then
+                    return chooseMove2
                 else if value == 3
-                    then do 
-                        putStrLn "Você tem duas opções para esse dado."
-                        putStrLn "Digite o número correspondente a opção que deseja realizar."
-                        putStrLn "Para virar para a face 1. DIGITE 1."
-                        putStrLn "Para virar para a face 2. DIGITE 2."
-                        option <- readInt
-                        newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
-                        return newGameState 
+                    then 
+                        return chooseMove3
                     else if value == 4
-                        then do 
-                            putStrLn "Você tem duas opções para esse dado."
-                            putStrLn "Digite o número correspondente a opção que deseja realizar."
-                            putStrLn "Para virar para a face 1. DIGITE 1."
-                            putStrLn "Para virar para a face 2. DIGITE 2."
-                            option <- readInt
-                            newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
-                            return newGameState 
+                        then 
+                            return chooseMove4
                         else if value == 5
-                            then do 
-                                putStrLn "Você tem três opções para esse dado."
-                                putStrLn "Digite o número correspondente a opção que deseja realizar."
-                                putStrLn "Para virar para a face 1. DIGITE 1."
-                                putStrLn "Para virar para a face 3. DIGITE 3."
-                                putStrLn "Para virar para a face 4. DIGITE 4."
-                                option <- readInt
-                                newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
-                                return newGameState 
+                            then 
+                                return chooseMove5
                             else if value == 6 
-                                then do 
-                                    putStrLn "Você tem quatro opções para esse dado."
-                                    putStrLn "Digite o número correspondente a opção que deseja realizar."
-                                    putStrLn "Para virar para a face 2. DIGITE 2."
-                                    putStrLn "Para virar para a face 3. DIGITE 3."
-                                    putStrLn "Para virar para a face 4. DIGITE 4."
-                                    putStrLn "Para virar para a face 5. DIGITE 5."
-                                    option <- readInt  
-                                    newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
-                                    return newGameState 
-                                else do
+                                then 
+                                    return chooseMove6  
+                                else
                                     fail "Erro: valor do dado inválido."
         Nothing -> do
             fail "Erro: valor do dado inválido."
+    newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
+    return newGameState 
 
-changeGameState :: IO GameState -> Int -> Maybe Int -> IO GameState
+chooseMove6 :: IO (Maybe Int) 
+chooseMove6 = do
+    putStrLn "Você tem quatro opções para esse dado."
+    putStrLn "Digite o número correspondente a opção que deseja realizar."
+    putStrLn "Para virar para a face 2. DIGITE 2."
+    putStrLn "Para virar para a face 3. DIGITE 3."
+    putStrLn "Para virar para a face 4. DIGITE 4."
+    putStrLn "Para virar para a face 5. DIGITE 5."
+    option <- readInt
+    case option of
+        Just opt ->
+            if 2 <= opt && opt <= 3 
+                then do
+                    return (Just opt)
+            else do
+                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+                chooseMove6
+        Nothing -> do
+            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+            chooseMove6           
+
+chooseMove1 :: IO (Maybe Int)  
+chooseMove1 = do
+    putStrLn "A única opção para esse dado é ser removido do jogo."
+    putStrLn "+--------------------------------------------------------------------------+"
+    return (Just 0)
+
+chooseMove2 :: IO (Maybe Int)  
+chooseMove2 = do 
+    putStrLn "A única opção para esse dado é ser virado para a face 1."
+    putStrLn "+--------------------------------------------------------------------------+"
+    return (Just 1)
+
+chooseMove3 :: IO (Maybe Int)  
+chooseMove3 = do 
+    putStrLn "Você tem duas opções para esse dado."
+    putStrLn "Digite o número correspondente a opção que deseja realizar."
+    putStrLn "Para virar para a face 1. DIGITE 1."
+    putStrLn "Para virar para a face 2. DIGITE 2."
+    option <- readInt
+    case option of
+        Just opt -> 
+            if opt >= 1 && opt <= 2
+                then do 
+                    return (Just opt)
+            else do
+                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+                chooseMove3
+        Nothing -> do
+            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+            chooseMove3
+             
+chooseMove4 :: IO (Maybe Int) 
+chooseMove4 = do
+    putStrLn "Você tem duas opções para esse dado."
+    putStrLn "Digite o número correspondente a opção que deseja realizar."
+    putStrLn "Para virar para a face 1. DIGITE 1."
+    putStrLn "Para virar para a face 2. DIGITE 2."
+    option <- readInt
+    case option of
+        Just opt -> 
+            if opt >= 1 && opt <= 2
+                then do 
+                    return (Just opt)
+            else do
+                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+                chooseMove4
+        Nothing -> do
+            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+            chooseMove4
+
+chooseMove5 :: IO (Maybe Int) 
+chooseMove5 = do
+    putStrLn "Você tem três opções para esse dado."
+    putStrLn "Digite o número correspondente a opção que deseja realizar."
+    putStrLn "Para virar para a face 1. DIGITE 1."
+    putStrLn "Para virar para a face 3. DIGITE 3."
+    putStrLn "Para virar para a face 4. DIGITE 4."
+    option <- readInt
+    case option of
+        Just opt -> 
+            if opt == 1 || opt == 3 || opt == 4
+                then do 
+                    return (Just opt)
+            else do
+                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+                chooseMove5   
+        Nothing -> do 
+            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+            chooseMove4                         
+
+changeGameState :: IO GameState -> Int -> IO(Maybe Int) -> IO GameState
 changeGameState ioGameState chosenDiePosition option = do
     (GameState dice) <- ioGameState 
-    let newDice = case option of
+    opt <- option
+    let newDice = case opt of
                     Just 0 -> removeAt chosenDiePosition dice
-                    Just opt -> modifyAt chosenDiePosition opt dice
+                    Just opt_ -> modifyAt chosenDiePosition opt_ dice
                     Nothing -> fail "Erro: valor do dado inválido."
     return (GameState newDice)
 
