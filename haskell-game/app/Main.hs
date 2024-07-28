@@ -20,7 +20,7 @@ main = do
         then do
             putStrLn "\n+--------------------------------------------------------------------------+"
             putStrLn "+--------------- Vamos dar início no jogo com o nível FÁCIL ---------------+"
-            easyLevel (return (gameState)) 0
+            easyLevel (return gameState) 0
             putStrLn "Terminamos o jogo!"
         else if level == 2
             then do

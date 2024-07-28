@@ -4,6 +4,8 @@ import Text.Read (readMaybe)
 import Control.Monad (replicateM)
 import System.Random
 
+
+-- Menus de escolha -- 
 initMenu :: IO ()
 initMenu = do
     putStrLn "+--------------------------------------------------------------------------+"
@@ -70,29 +72,32 @@ startMenu (GameState dice) = do
             putStrLn "+------------- Você escolheu um valor inválido para os dados. -------------+"
             startMenu (GameState dice)
 
-isOver :: GameState -> Bool
-isOver (GameState dice)
-    | length dice == 0 = True
-    | otherwise        = False
-
+-- Implementação do nível fácil 
 easyLevel :: IO GameState -> Int -> IO ()
 easyLevel ioGameState turn = do
-    gameState <- ioGameState 
+    gameState <- ioGameState
     let currentTurn = turn + 1
     let gameIsOver = isOver gameState
-    if gameIsOver
-        then return ()
+    if gameIsOver 
+        then do 
+            if isOdd currentTurn
+                then do
+                    putStrLn "Eu ganhei o jogo!"
+                else do
+                    putStrLn "Você ganhou o jogo!"
     else do 
-        putStrLn "\n"
         printDice gameState
         let playerTurn = isOdd currentTurn
         if playerTurn 
-        then do
-            let newGame = humanPlayerTurn ioGameState 
-            easyLevel newGame currentTurn  
-        else do
-            putStrLn "\nÉ a minha vez de jogar!"
-    
+            then do
+                newGameHuman <- humanPlayerTurn ioGameState
+                easyLevel (return newGameHuman) currentTurn
+            else do
+                newGameComputer <- computerEasyLevelTurn ioGameState
+                easyLevel (return newGameComputer) currentTurn
+
+
+-- Implementação da jogada do jogador humano    
 humanPlayerTurn :: IO GameState -> IO GameState
 humanPlayerTurn ioGameState = do
     gameState <- ioGameState 
@@ -115,6 +120,8 @@ humanPlayerTurn ioGameState = do
             putStrLn "+-------------------- Você escolheu um valor inválido. ---------------------+" 
             humanPlayerTurn ioGameState  
 
+
+-- Escolha dos dados e movimentos para a jogada do humano
 chooseMove :: IO GameState -> Int -> IO GameState
 chooseMove ioGameState chosenDiePosition = do
     gameState <- ioGameState 
@@ -143,30 +150,9 @@ chooseMove ioGameState chosenDiePosition = do
                                 else
                                     fail "Erro: valor do dado inválido."
         Nothing -> do
-            fail "Erro: valor do dado inválido."
+            fail "Erro: valor do dado inválido. ta caindo aqui"
     newGameState <- changeGameState (return (gameState)) (chosenDiePosition - 1) option
     return newGameState 
-
-chooseMove6 :: IO (Maybe Int) 
-chooseMove6 = do
-    putStrLn "Você tem quatro opções para esse dado."
-    putStrLn "Digite o número correspondente a opção que deseja realizar."
-    putStrLn "Para virar para a face 2. DIGITE 2."
-    putStrLn "Para virar para a face 3. DIGITE 3."
-    putStrLn "Para virar para a face 4. DIGITE 4."
-    putStrLn "Para virar para a face 5. DIGITE 5."
-    option <- readInt
-    case option of
-        Just opt ->
-            if 2 <= opt && opt <= 3 
-                then do
-                    return (Just opt)
-            else do
-                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
-                chooseMove6
-        Nothing -> do
-            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
-            chooseMove6           
 
 chooseMove1 :: IO (Maybe Int)  
 chooseMove1 = do
@@ -236,7 +222,64 @@ chooseMove5 = do
                 chooseMove5   
         Nothing -> do 
             putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
-            chooseMove4                         
+            chooseMove4      
+
+chooseMove6 :: IO (Maybe Int) 
+chooseMove6 = do
+    putStrLn "Você tem quatro opções para esse dado."
+    putStrLn "Digite o número correspondente a opção que deseja realizar."
+    putStrLn "Para virar para a face 2. DIGITE 2."
+    putStrLn "Para virar para a face 3. DIGITE 3."
+    putStrLn "Para virar para a face 4. DIGITE 4."
+    putStrLn "Para virar para a face 5. DIGITE 5."
+    option <- readInt
+    case option of
+        Just opt ->
+            if 2 <= opt && opt <= 5 
+                then do
+                    return (Just opt)
+            else do
+                putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+                chooseMove6
+        Nothing -> do
+            putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
+            chooseMove6                       
+
+chooseMoveComputer :: [Int] -> IO (Maybe Int)
+chooseMoveComputer optVec = do
+    randOpt <- randomNum (length optVec)
+    let option = (optVec !! (randOpt - 1))
+    return (Just option)
+
+computerEasyLevelTurn :: IO GameState -> IO GameState
+computerEasyLevelTurn ioGameState = do
+    gameState <- ioGameState 
+    let (GameState dice) = gameState
+    let num = length dice
+    choosenDiePosition <- (randomNum num)
+    putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+    printDie (dice !! (choosenDiePosition - 1))
+    let dieValue = getValueAtIndex (GameState dice) choosenDiePosition
+    option <- case dieValue of
+        Just value ->
+            if value == 1
+            then return (Just 0)
+            else if value == 2
+                then return (Just 1)
+                else if value == 3
+                    then (chooseMoveComputer [1,2])
+                    else if value == 4
+                        then (chooseMoveComputer [1,2])
+                        else if value == 5
+                            then (chooseMoveComputer [1,3,4])
+                            else if value == 6 
+                                then (chooseMoveComputer [2,3,4,5])
+                                else
+                                    fail "Erro: valor do dado inválido."
+        Nothing -> do
+            fail "Erro: valor do dado inválido."
+    newGameState <- changeGameState (return (gameState)) (choosenDiePosition - 1) (return option)
+    return newGameState 
 
 changeGameState :: IO GameState -> Int -> IO(Maybe Int) -> IO GameState
 changeGameState ioGameState chosenDiePosition option = do
@@ -246,7 +289,7 @@ changeGameState ioGameState chosenDiePosition option = do
                     Just 0 -> removeAt chosenDiePosition dice
                     Just opt_ -> modifyAt chosenDiePosition opt_ dice
                     Nothing -> fail "Erro: valor do dado inválido."
-    return (GameState newDice)
+    return (GameState newDice)       
 
 removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n + 1) xs
@@ -256,7 +299,7 @@ modifyAt n newVal xs = take n xs ++ [newVal] ++ drop (n + 1) xs
 
 getValueAtIndex :: GameState -> Int -> Maybe Int
 getValueAtIndex (GameState dice) n
-    | n >= 0 && n < length dice = Just (dice !! (n-1))
+    | n > 0 && n <= length dice = Just (dice !! (n-1))
     | otherwise = Nothing
 
 difficultLevel :: GameState -> IO ()
@@ -307,3 +350,8 @@ isOdd :: Int -> Bool
 isOdd n = n `mod` 2 /= 0
 
 data GameState = GameState [Int] deriving Show
+
+isOver :: GameState -> Bool
+isOver (GameState dice)
+    | length dice == 0 = True
+    | otherwise        = False
