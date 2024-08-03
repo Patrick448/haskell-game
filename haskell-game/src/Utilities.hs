@@ -73,34 +73,33 @@ startMenu (GameState dice) = do
             startMenu (GameState dice)
 
 -- Implementação do nível fácil 
-easyLevel :: IO GameState -> Int -> IO ()
-easyLevel ioGameState turn = do
-    gameState <- ioGameState
+easyLevel :: GameState -> Int -> IO ()
+easyLevel gameState turn = do
     let currentTurn = turn + 1
     let gameIsOver = isOver gameState
     if gameIsOver 
         then do 
             if isOdd currentTurn
                 then do
-                    putStrLn "Eu ganhei o jogo!"
+                    putStrLn "+------------------------- Eu ganhei o jogo! ------------------------------+"
                 else do
-                    putStrLn "Você ganhou o jogo!"
+                    putStrLn "+------------------------ Você ganhou o jogo! -----------------------------+"
     else do 
+        putStrLn "\n\n"
         printDice gameState
         let playerTurn = isOdd currentTurn
         if playerTurn 
             then do
-                newGameHuman <- humanPlayerTurn ioGameState
-                easyLevel (return newGameHuman) currentTurn
+                newGameHuman <- humanPlayerTurn gameState
+                easyLevel newGameHuman currentTurn
             else do
-                newGameComputer <- computerEasyLevelTurn ioGameState
-                easyLevel (return newGameComputer) currentTurn
+                newGameComputer <- computerEasyLevelTurn gameState
+                easyLevel newGameComputer currentTurn
 
 
 -- Implementação da jogada do jogador humano    
-humanPlayerTurn :: IO GameState -> IO GameState
-humanPlayerTurn ioGameState = do
-    gameState <- ioGameState 
+humanPlayerTurn :: GameState -> IO GameState
+humanPlayerTurn gameState = do
     let (GameState dice) = gameState
     let num = length dice
     putStrLn $ "É a sua vez de jogar! Escolha um dado de 1 até " ++ show num ++ " para mexer."
@@ -115,10 +114,10 @@ humanPlayerTurn ioGameState = do
                 return newGame
             else do
                 putStrLn "+-------------------- Você escolheu um valor inválido. ---------------------+" 
-                humanPlayerTurn ioGameState
+                humanPlayerTurn (GameState dice)
         Nothing -> do
             putStrLn "+-------------------- Você escolheu um valor inválido. ---------------------+" 
-            humanPlayerTurn ioGameState  
+            humanPlayerTurn (GameState dice) 
 
 
 -- Escolha dos dados e movimentos para a jogada do humano
@@ -251,9 +250,8 @@ chooseMoveComputer optVec = do
     let option = (optVec !! (randOpt - 1))
     return (Just option)
 
-computerEasyLevelTurn :: IO GameState -> IO GameState
-computerEasyLevelTurn ioGameState = do
-    gameState <- ioGameState 
+computerEasyLevelTurn :: GameState -> IO GameState
+computerEasyLevelTurn gameState = do
     let (GameState dice) = gameState
     let num = length dice
     choosenDiePosition <- (randomNum num)
@@ -355,3 +353,27 @@ isOver :: GameState -> Bool
 isOver (GameState dice)
     | length dice == 0 = True
     | otherwise        = False
+
+
+{-
+    ! Escolha quando tiver 1 dado:
+         * Se for 1 -> escolhe 1 pra remover
+         * Se for 2 -> escolhe para virar para a face 1 PERDEDOR
+         * Se for 3 ou 4 -> escolhe virar para a face para o 2
+         * Se for 5 -> independe da escolha (randomico) PERDEDOR
+         * Se for 6 -> escolher ir pro 3 ou 4 (randomico)
+
+    ! Escolha quando tivermos 2 dados:
+        * Tem a mesma face? 
+            * Se sim -> escolha qualquer um (randomico)
+            * Se não tem a mesma face:
+                * Soma igual a sete -> escolha qualquer um (randomico) 
+                * Soma diferente a sete -> ou ambas as faces iguais ou a soma igual a sete
+
+    ! Escolha quando tiverem mais de 2 dados:
+        * TODAS as faces são 2 ou 5? 
+            * Se sim -> escolha qualquer um (randomico)
+            * Se não -> desconsiderando os dados 2 e 5 -> 
+                * Se sobrou um valor ímpar -> escolha qualquer um (randomico)
+                * Se sobrou um valor par -> juntar todos os pares para que tenham configuração Perdedora (ambas as faces iguais ou faces diferentes com soma igual a sete)
+-}
