@@ -1,9 +1,12 @@
+-- Maria Eduarda de Medeiros Simonassi _ 202365119A
+-- Patrick Canto de Carvalho _ 201935026
+
 module Utilities (initMenu, levelMenu, numberOfDiceMenu, generateFaces, printDice, startMenu, easyLevel, difficultLevel) where
 
 import Text.Read (readMaybe)
 import Control.Monad (replicateM)
 import System.Random
-
+import Data.List (delete, sort, findIndex, nub)
 
 -- Menus de escolha -- 
 initMenu :: IO ()
@@ -244,6 +247,8 @@ chooseMove6 = do
             putStrLn "+----------- Entrada inválida! Digite apenas números válidos. -------------+"
             chooseMove6                       
 
+
+-- Escolha dos dados e movimentos para a jogada do computador no nível fácil 
 chooseMoveComputer :: [Int] -> IO (Maybe Int)
 chooseMoveComputer optVec = do
     randOpt <- randomNum (length optVec)
@@ -279,6 +284,209 @@ computerEasyLevelTurn gameState = do
     newGameState <- changeGameState (return (gameState)) (choosenDiePosition - 1) (return option)
     return newGameState 
 
+
+-- Implementação do nível difícil
+difficultLevel :: GameState -> Int -> IO ()
+difficultLevel gameState turn = do
+    let currentTurn = turn + 1
+    let gameIsOver = isOver gameState
+    if gameIsOver 
+        then do 
+            if not (isOdd currentTurn)
+                then do
+                    putStrLn "+------------------------- Eu ganhei o jogo! ------------------------------+"
+                else do
+                    putStrLn "+------------------------ Você ganhou o jogo! -----------------------------+"
+    else do 
+        putStrLn "\n\n"
+        printDice gameState
+        let playerTurn = not (isOdd currentTurn)
+        if playerTurn 
+            then do
+                newGameHuman <- humanPlayerTurn gameState
+                difficultLevel newGameHuman currentTurn
+            else do
+                newGameComputer <- computerHardLevelTurn gameState
+                difficultLevel newGameComputer currentTurn
+
+
+-- Escolha dos dados e movimentos para a jogada do computador no nível difícil
+chooseHardMove1 :: Int -> GameState ->  IO GameState
+chooseHardMove1 n gameState = do
+    let (GameState dice) = gameState
+    let dieValue = getValueAtIndex (GameState dice) (n+1)
+    case dieValue of
+        Just value ->
+            if value == 1
+                then do
+                    return (GameState (removeAt n dice))
+                else if value == 2
+                    then do
+                        (changeGameState (return gameState) n (return (Just 1)))
+                    else if value == 3 || value == 4
+                        then do
+                            (changeGameState (return gameState) n (return (Just 2)))
+                        else if value == 5
+                            then do
+                                (changeGameState (return gameState) n (return (Just 3)))
+                            else do
+                                (changeGameState (return gameState) n (return (Just 4)))
+        Nothing -> do
+            fail "Erro: valor do dado inválido."
+
+chooseHardMoveMoreThan2 :: GameState -> IO GameState
+chooseHardMoveMoreThan2 gameState = do
+    let (GameState dice) = gameState
+    let equal2or5 = all (\value -> value == 2 || value == 5) dice
+    if equal2or5
+        then do
+            choosenDiePosition <- (randomNum (length dice))
+            putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+            printDie (dice !! (choosenDiePosition - 1))
+            changeGameState (return gameState) (choosenDiePosition - 1) (return (Just 1))
+    else do
+        let filteredDice = filter (\value -> value /= 2 && value /= 5) dice
+        let removedPairsDice = (removePairs (==) (sort filteredDice))
+        let removedSevenSumDice = removeSumSevenPairs (sort removedPairsDice)
+        let zeroDice = length removedSevenSumDice == 0
+        let oneDie = length removedSevenSumDice == 1
+        let twoDice = length removedSevenSumDice == 2
+        if zeroDice
+            then do
+                choosenDiePosition <- (randomNum (length dice))
+                putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                printDie (dice !! (choosenDiePosition - 1))
+                chooseHardMove1 (choosenDiePosition - 1) gameState
+        else if oneDie
+            then do
+                let index = findIndex (== (removedSevenSumDice !! 0)) dice
+                case index of
+                    Just i -> do
+                        putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                        printDie (dice !! i)
+                        chooseHardMove1 i gameState
+                    Nothing -> do
+                        fail "Erro: valor do dado inválido."
+        else if twoDice
+            then do
+                let index1 = findIndex (== (removedSevenSumDice !! 0)) dice
+                let index2 = findIndex (== (removedSevenSumDice !! 1)) dice
+                case index1 of
+                    Just i1 -> 
+                        case index2 of
+                            Just i2 -> 
+                                chooseHardMove2 i1 i2 gameState
+                            Nothing -> do
+                                fail "Erro: valor do segundo dado inválido."
+                    Nothing -> do
+                        fail "Erro: valor do primeiro dado inválido."
+
+        else do
+            fail "Erro: Combinação de dados inválida."
+
+chooseHardMove2 :: Int -> Int -> GameState -> IO GameState
+chooseHardMove2 i1 i2 gameState = do 
+    let (GameState dice) = gameState 
+    let firstDieValue = getValueAtIndex (GameState dice) (i1+1)
+    let secondDieValue = getValueAtIndex (GameState dice) (i2+1)
+    case firstDieValue of
+        Just fDie -> 
+            case secondDieValue of 
+                Just sDie ->
+                    if fDie == sDie -- Ambos dados tem a mesma face
+                        then do
+                            putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                            printDie (dice !! i1)
+                            if fDie == 1 -- Ambas faces são 1
+                                then changeGameState (return gameState) i1 (return (Just 0))
+                            else if fDie == 2 -- Ambas faces são 2
+                                then changeGameState (return gameState) i1 (return (Just 1))
+                            else if fDie == 3 -- Ambas faces são 3
+                                then changeGameState (return gameState) i1 (return (Just 2))
+                            else if fDie == 4 -- Ambas faces são 4
+                                then changeGameState (return gameState) i1 (return (Just 2))
+                            else if fDie == 5 -- Ambas faces são 5
+                                then changeGameState (return gameState) i1 (return (Just 3))
+                            else if fDie == 6 -- Ambas faces são 6
+                                then changeGameState (return gameState) i1 (return (Just 4))
+                            else 
+                                fail "Erro: Combinação de dados e valores inválido"
+                    else if fDie + sDie == 7 -- Os dados são diferentes e a soma é igual a sete
+                        then do
+                            choosenDiePosition <- randomNum 2
+                            if choosenDiePosition == 1  -- De forma randômica, iremos mexer no primeiro dado 
+                                then do
+                                    putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                                    printDie (dice !! 0)
+                                    if fDie == 1 
+                                        then changeGameState (return gameState) i1 (return (Just 0))
+                                    else if fDie == 2 
+                                        then changeGameState (return gameState) i1 (return (Just 1))
+                                    else if fDie == 3 
+                                        then changeGameState (return gameState) i1 (return (Just 2))
+                                    else if fDie == 4 
+                                        then changeGameState (return gameState) i1 (return (Just 2))
+                                    else if fDie == 5 
+                                        then changeGameState (return gameState) i1 (return (Just 3))
+                                    else if fDie == 6 
+                                        then changeGameState (return gameState) i1 (return (Just 4))
+                                    else 
+                                        fail "Erro: Combinação de dados e valores inválido"     
+                            else if choosenDiePosition == 2 -- De forma randômica, iremos mexer no segundo dado    
+                                then do
+                                    putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                                    printDie (dice !! 1)
+                                    if sDie == 1 
+                                        then changeGameState (return gameState) i2 (return (Just 0))
+                                    else if sDie == 2 
+                                        then changeGameState (return gameState) i2 (return (Just 1))
+                                    else if sDie == 3 
+                                        then changeGameState (return gameState) i2 (return (Just 2))
+                                    else if sDie == 4 
+                                        then changeGameState (return gameState) i2 (return (Just 2))
+                                    else if sDie == 5 
+                                        then changeGameState (return gameState) i2 (return (Just 3))
+                                    else if sDie == 6 
+                                        then changeGameState (return gameState) i2 (return (Just 4))
+                                    else 
+                                        fail "Erro: Combinação de dados e valores inválido"   
+                            else 
+                                fail "Erro: Combinação de dados e valores inválido" 
+                    else if fDie + sDie /= 7 -- Os dados são diferentes e a soma é diferente de sete
+                        then do
+                            if fDie < sDie -- O primeiro valor é menor que o segundo
+                                then do
+                                    putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                                    printDie (dice !! i2)
+                                    changeGameState (return gameState) i2 (return (Just fDie))
+                            else if sDie < fDie -- O segundo valor é menor que o primeiro 
+                                then do
+                                    putStrLn "+-------------------------- Eu escolhi esse dado: -------------------------+"
+                                    printDie (dice !! i1)
+                                    changeGameState (return gameState) i1 (return (Just sDie))
+                            else
+                                fail "Erro: Combinação de dados e valores inválido"
+                    else 
+                        fail "Erro: Combinação de dados e valores inválido"
+                Nothing -> do
+                    fail "Erro: valor do segundo dado inválido."
+        Nothing -> do
+            fail "Erro: valor do primeiro dado inválido."
+        
+computerHardLevelTurn :: GameState -> IO GameState
+computerHardLevelTurn gameState = do
+    let (GameState dice) = gameState
+    let num = length dice
+    if num == 1  -- Caso exista 1 dado no jogo 
+        then chooseHardMove1 0 gameState
+    else if num == 2  -- Caso existam 2 dados no jogo 
+        then chooseHardMove2 0 1 gameState
+    else -- Caso existam mais de 2 dados no jogo
+        chooseHardMoveMoreThan2 gameState
+
+
+
+-- Modificar o estado atual do jogo
 changeGameState :: IO GameState -> Int -> IO(Maybe Int) -> IO GameState
 changeGameState ioGameState chosenDiePosition option = do
     (GameState dice) <- ioGameState 
@@ -289,6 +497,8 @@ changeGameState ioGameState chosenDiePosition option = do
                     Nothing -> fail "Erro: valor do dado inválido."
     return (GameState newDice)       
 
+
+-- Funções auxiliares
 removeAt :: Int -> [a] -> [a]
 removeAt n xs = take n xs ++ drop (n + 1) xs
 
@@ -299,11 +509,6 @@ getValueAtIndex :: GameState -> Int -> Maybe Int
 getValueAtIndex (GameState dice) n
     | n > 0 && n <= length dice = Just (dice !! (n-1))
     | otherwise = Nothing
-
-difficultLevel :: GameState -> IO ()
-difficultLevel (GameState dice) = do
-    let num = length dice
-    putStrLn $ "coisa do difícil" ++ show num ++ "!"
 
 randomNum :: Int -> IO Int
 randomNum n = do
@@ -347,33 +552,34 @@ printDie dieNum = do
 isOdd :: Int -> Bool
 isOdd n = n `mod` 2 /= 0
 
-data GameState = GameState [Int] deriving Show
-
 isOver :: GameState -> Bool
 isOver (GameState dice)
     | length dice == 0 = True
     | otherwise        = False
 
+removePairs :: (a -> a -> Bool) -> [a] -> [a]
+removePairs _ [] = []  
+removePairs _ [x] = [x]  
+removePairs cond (x:y:xs)
+    | cond x y  = removePairs cond xs 
+    | otherwise = x : removePairs cond (y:xs)  
 
-{-
-    ! Escolha quando tiver 1 dado:
-         * Se for 1 -> escolhe 1 pra remover
-         * Se for 2 -> escolhe para virar para a face 1 PERDEDOR
-         * Se for 3 ou 4 -> escolhe virar para a face para o 2
-         * Se for 5 -> independe da escolha (randomico) PERDEDOR
-         * Se for 6 -> escolher ir pro 3 ou 4 (randomico)
+removeSumSevenPairs :: [Int] -> [Int]
+removeSumSevenPairs xs = removeValues xs valuesToRemove
+  where
+    pairsToRemove = findPairsToRemove (sort xs)
+    
+    valuesToRemove = nub $ concatMap (\(a, b) -> [a, b]) pairsToRemove
+    
+    removeValues :: [Int] -> [Int] -> [Int]
+    removeValues [] _ = []
+    removeValues (y:ys) values
+      | y `elem` values = removeValues ys (delete y values)
+      | otherwise = y : removeValues ys values
 
-    ! Escolha quando tivermos 2 dados:
-        * Tem a mesma face? 
-            * Se sim -> escolha qualquer um (randomico)
-            * Se não tem a mesma face:
-                * Soma igual a sete -> escolha qualquer um (randomico) 
-                * Soma diferente a sete -> ou ambas as faces iguais ou a soma igual a sete
+    findPairsToRemove :: [Int] -> [(Int, Int)]
+    findPairsToRemove [] = []
+    findPairsToRemove (z:zs) = [(z, y) | y <- zs, z + y == 7] ++ findPairsToRemove zs
 
-    ! Escolha quando tiverem mais de 2 dados:
-        * TODAS as faces são 2 ou 5? 
-            * Se sim -> escolha qualquer um (randomico)
-            * Se não -> desconsiderando os dados 2 e 5 -> 
-                * Se sobrou um valor ímpar -> escolha qualquer um (randomico)
-                * Se sobrou um valor par -> juntar todos os pares para que tenham configuração Perdedora (ambas as faces iguais ou faces diferentes com soma igual a sete)
--}
+-- Criação da estrutura de dados 
+data GameState = GameState [Int] deriving Show

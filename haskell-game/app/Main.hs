@@ -1,3 +1,6 @@
+-- Maria Eduarda de Medeiros Simonassi _ 202365119A
+-- Patrick Canto de Carvalho _ 201935026
+
 module Main (main) where
 
 import Utilities
@@ -24,7 +27,9 @@ main = do
             putStrLn "+----------------------- Terminamos o jogo! -------------------------------+"
         else if level == 2
             then do
-                putStrLn "\nVamos dar início no jogo com o nível DIFÍCIL"
-                difficultLevel gameState
+            putStrLn "\n+--------------------------------------------------------------------------+"
+            putStrLn "+-------------- Vamos dar início no jogo com o nível DIFICIL --------------+"
+            difficultLevel gameState 0
+            putStrLn "+----------------------- Terminamos o jogo! -------------------------------+"
             else return ()
 
